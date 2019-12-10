@@ -18,13 +18,13 @@ var weatherModule = (function(){
         +'</div>'
         +'<div class="weather-todayotherinfo">'
           +'<p class="weather-todayotherinfo-time">更新中。。。</p>'
-          +'<p>实时：<span class="weather-todayotherinfo-nowtemp"></span>°C</p>'
-          +'<h5>空气指数：</h5>'
+          +'<p>实时：<span class="weather-todayotherinfo-nowtemp"></span></p>'
+          +'<h5>空气质量提示：</h5>'
           +'<p class="weather-todayotherinfo-airinfo"></p>'
-          +'<h5>舒适指数:</h5>'
-          +'<p class="weather-todayotherinfo-comfinfo"></p>'
-          +'<h5>感冒指数：</h5>'
-          + '<p class="weather-todayotherinfo-coldinfo"></p>'
+          +'<h5>穿衣指数:</h5>'
+          +'<p class="weather-todayotherinfo-clothe"></p>'
+          +'<h5>紫外线指数:</h5>'
+          + '<p class="weather-todayotherinfo-ray"></p>'
         + '</div>'
         + '<div class="weather-future">'
           + '<ul>'
@@ -44,13 +44,13 @@ var weatherModule = (function(){
         + '</div>'
       + '</div>',
 
-      jqueryMap = {},
-      setJqueryMap,
-      updateDate,
-      updateWeather,
-      initModule;
+    jqueryMap = {},
+    setJqueryMap,
+    updateDate,
+    updateWeather,
+    initModule;
 
-  var setJqueryMap = function($container){
+  setJqueryMap = function($container){
     jqueryMap.$today_day = $container.find('.weather-day');
     jqueryMap.$today_year = $container.find('.weather-year');
     jqueryMap.$today_month = $container.find('.weather-month');
@@ -59,9 +59,9 @@ var weatherModule = (function(){
     jqueryMap.$this_city = $container.find('.weather-thiscity');
     jqueryMap.$update_time = $container.find('.weather-todayotherinfo-time');
     jqueryMap.$now_temp = $container.find('.weather-todayotherinfo-nowtemp');
-    jqueryMap.$cold_info = $container.find('.weather-todayotherinfo-coldinfo');
+    jqueryMap.$ray_info = $container.find('.weather-todayotherinfo-ray');
     jqueryMap.$air_info = $container.find('.weather-todayotherinfo-airinfo');
-    jqueryMap.$comf_info = $container.find('.weather-todayotherinfo-comfinfo');
+    jqueryMap.$clothe_info = $container.find('.weather-todayotherinfo-clothe');
     jqueryMap.$temp_range = $container.find('.weather-todayinfo-temprange');
     jqueryMap.$temp_type = $container.find('.weather-todayinfo-type');
     jqueryMap.$temp_wind = $container.find('.weather-todayinfo-wind');
@@ -70,7 +70,7 @@ var weatherModule = (function(){
     jqueryMap.$update_weather = $container.find('.weather-update');
   };
 
-  var updateDate = function(){
+  updateDate = function(){
     var now=new Date(),
         day=now.getDay(),
         year=now.getFullYear(),
@@ -109,50 +109,47 @@ var weatherModule = (function(){
     jqueryMap.$today_date.text(date);
   };
 
-  var updateWeather = function(){
+  updateWeather = function(){
     var city = jqueryMap.$city.val() || "北京";
-    var url = "https://free-api.heweather.com/v5/weather?key=4a520f7c897c4049b42e1c9c526e6468&city=" + city;
+    var url = "https://www.tianqiapi.com/api/?appid=91766733&appsecret=znImL7Lw";
+    var sendData = "version=v1&city="+city;
     $.ajax({
       url: url,
+      data: sendData,
+      dataType: 'JSON',
       success : function(info){
-        // console.log(info)
-        if(info.HeWeather5[0].status === "ok"){
-          var today = info.HeWeather5[0].daily_forecast[0].tmp,
-              now = info.HeWeather5[0].now,
-              temprange = today.min + "~" + today.max;
+        console.log(info)
+
+        if(info.city != city){
+          jqueryMap.$this_city.text("无效的城市");
+          setTimeout(function(){
+            jqueryMap.$city.val("").focus();
+            console.log('wrong cityname:'+city)
+            updateWeather()
+          }, 1000)
+        }else{
+          var today = info.data[0],
+              temprange = today.tem2 + "~" + today.tem1;
 
           jqueryMap.$this_city.text(city);
-          jqueryMap.$update_time.text("数据更新时间："+info.HeWeather5[0].basic.update.loc);
+          jqueryMap.$update_time.text("数据更新时间："+info.update_time);
+          jqueryMap.$now_temp.text(today.tem);
+          jqueryMap.$air_info.text(today.air_tips)
+          jqueryMap.$clothe_info.text(today.index[3].desc)
+          jqueryMap.$ray_info.text(today.index[0].desc)
 
-          jqueryMap.$now_temp.text(now.tmp);
-          jqueryMap.$cold_info.text(info.HeWeather5[0].suggestion.flu.brf+" : "+info.HeWeather5[0].suggestion.flu.txt);
-          jqueryMap.$air_info.text(info.HeWeather5[0].suggestion.air.brf+" : "+info.HeWeather5[0].suggestion.air.txt);
-          jqueryMap.$comf_info.text(info.HeWeather5[0].suggestion.comf.brf+" : "+info.HeWeather5[0].suggestion.comf.txt);
-          
           jqueryMap.$temp_range.text(temprange);
-          jqueryMap.$temp_type.text(now.cond.txt);
-          jqueryMap.$temp_wind.text(now.wind.dir+now.wind.sc+"级");
-          if(info.HeWeather5[0].aqi){
-            jqueryMap.$temp_aqi.text(info.HeWeather5[0].aqi.city.aqi+" "+info.HeWeather5[0].aqi.city.qlty);
-          }else{
-            jqueryMap.$temp_aqi.text("暂无数据");
-          }
-          jqueryMap.$future_list.each(function(index) {
-            var idx = index + 1,
-                future = info.HeWeather5[0].daily_forecast[idx],
+          jqueryMap.$temp_type.text(today.wea);
+          jqueryMap.$temp_wind.text("风力："+today.win_speed);
+          jqueryMap.$temp_aqi.text(today.air_level)
 
-                date = future.date,
-                temprange = future.tmp.min+"~"+future.tmp.max,
-                type = future.cond.txt_n,
-                wind = future.wind.dir+future.wind.sc+"级";
+          jqueryMap.$future_list.each(function(index, item){
 
-            $(this).find('.date').text(date);
-            $(this).find('.temprange').text(temprange);
-            $(this).find('.type').text(type);
-            $(this).find('.wind').text(wind);
-          });
-        }else{
-          jqueryMap.$this_city.text("无效的城市");
+            $(this).find('.date').text(info.data[index+1].day);
+            $(this).find('.temprange').text(info.data[index+1].tem2 + "~" + info.data[index+1].tem1);
+            $(this).find('.type').text(info.data[index+1].wea);
+            $(this).find('.wind').text(info.data[index+1].win[0]);
+          })
         }
       }
     });
@@ -188,3 +185,18 @@ var weatherModule = (function(){
   };
 }());
 
+// 上边的api坏了， 重新找一个
+/*
+$.ajax({
+  type: 'GET',
+  url: 'https://www.tianqiapi.com/api/?appid=91766733&appsecret=znImL7Lw',
+  data: 'version=v1&city=济南',
+  dataType: 'JSON',
+  error: function () {
+    alert('网络错误');
+  },
+  success: function (res) {
+    console.log(res)   
+  }
+});
+*/
